@@ -24,6 +24,9 @@ export default function BatchLogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
+  const [editedNotes, setEditedNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     async function fetchBatches() {
@@ -43,6 +46,32 @@ export default function BatchLogPage() {
 
   function toggleExpand(id: number) {
     setExpandedId((prev) => (prev === id ? null : id));
+    setEditingNotesId(null);
+  }
+
+  function startEditingNotes(batch: BatchData) {
+    setEditingNotesId(batch.id);
+    setEditedNotes(batch.notes);
+  }
+
+  async function saveNotes(batchId: number) {
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`/api/batches/${batchId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: editedNotes }),
+      });
+      if (!res.ok) throw new Error('Failed to save notes');
+      setBatches((prev) =>
+        prev.map((b) => (b.id === batchId ? { ...b, notes: editedNotes } : b))
+      );
+      setEditingNotesId(null);
+    } catch {
+      alert('Failed to save notes. Please try again.');
+    } finally {
+      setSavingNotes(false);
+    }
   }
 
   if (loading) {
@@ -209,22 +238,71 @@ export default function BatchLogPage() {
                   >
                     {/* Tasting notes */}
                     <div className="mt-4 mb-5">
-                      <h3
-                        className="text-sm font-bold uppercase tracking-wider mb-2"
-                        style={{ color: 'var(--text-muted)' }}
-                      >
-                        Tasting Notes
-                      </h3>
-                      <p
-                        className="text-sm leading-relaxed"
-                        style={{
-                          color: batch.notes
-                            ? 'var(--text-secondary)'
-                            : 'var(--text-muted)',
-                        }}
-                      >
-                        {batch.notes || 'No notes'}
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3
+                          className="text-sm font-bold uppercase tracking-wider"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Tasting Notes
+                        </h3>
+                        {editingNotesId !== batch.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditingNotes(batch);
+                            }}
+                            className="text-xs font-medium"
+                            style={{ color: 'var(--accent)' }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                      {editingNotesId === batch.id ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            className="input text-sm"
+                            rows={3}
+                            value={editedNotes}
+                            onChange={(e) => setEditedNotes(e.target.value)}
+                            style={{ resize: 'vertical' }}
+                            maxLength={2000}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                saveNotes(batch.id);
+                              }}
+                              className="btn-primary text-xs py-2 px-4"
+                              disabled={savingNotes}
+                            >
+                              {savingNotes ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingNotesId(null);
+                              }}
+                              className="btn-secondary text-xs py-2 px-4"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p
+                          className="text-sm leading-relaxed"
+                          style={{
+                            color: batch.notes
+                              ? 'var(--text-secondary)'
+                              : 'var(--text-muted)',
+                          }}
+                        >
+                          {batch.notes || 'No notes'}
+                        </p>
+                      )}
                     </div>
 
                     {/* Botanicals list */}

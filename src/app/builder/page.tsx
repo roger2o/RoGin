@@ -113,7 +113,7 @@ function StartingPointStep({
           className="card p-6 text-left"
         >
           <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--accent)' }}>
-            New Recipe Wizard
+            RoGin AI Distiller
           </h3>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Let an AI gin distiller guide you through creating a brand new recipe
@@ -419,6 +419,7 @@ function BuilderInner() {
   const [editorItems, setEditorItems] = useState<EditorItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [wizardJuniperConfirmed, setWizardJuniperConfirmed] = useState(false);
 
   // Fetch batches and botanicals on mount
   useEffect(() => {
@@ -607,7 +608,7 @@ function BuilderInner() {
         }
       }
 
-      setSelectedBatch({ id: 0, name: 'Wizard Recipe', date: '', totalVolume: 0, notes: '', recipeId: null, recipeName: null, items: [] });
+      setSelectedBatch({ id: 0, name: 'AI Distiller Recipe', date: '', totalVolume: 0, notes: '', recipeId: null, recipeName: null, items: [] });
       setEditorItems(wizardEditorItems);
       setSaved(false);
       setStep(3);
@@ -618,8 +619,8 @@ function BuilderInner() {
   // If mode=wizard, show the wizard chat
   if (mode === 'wizard') {
     const juniperMl = parseInt(juniperInput, 10);
-    // If no juniper amount entered yet, ask for it first
-    if (!juniperMl || juniperMl <= 0) {
+    // If Juniper amount not yet confirmed, show the input step
+    if (!wizardJuniperConfirmed) {
       return (
         <div className="max-w-2xl mx-auto px-4 py-8">
           <button
@@ -632,23 +633,8 @@ function BuilderInner() {
           <JuniperStep
             juniperMl={juniperInput}
             onJuniperChange={setJuniperInput}
-            onNext={() => {
-              // Stay on wizard mode after entering Juniper amount
-            }}
+            onNext={() => setWizardJuniperConfirmed(true)}
           />
-          {parseInt(juniperInput, 10) > 0 && (
-            <div className="mt-4 text-center">
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  // Force re-render by updating state — wizard will now render
-                  setJuniperInput(juniperInput);
-                }}
-              >
-                Start Wizard
-              </button>
-            </div>
-          )}
         </div>
       );
     }

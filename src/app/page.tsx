@@ -1,15 +1,18 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <div className="text-center mb-12 animate-fade-in-up">
-        <h1
-          className="text-5xl font-bold mb-3"
-          style={{ color: 'var(--accent)' }}
-        >
-          RoGin
-        </h1>
+        <Image
+          src="/rogin-logo.png"
+          alt="RoGin - Pickle Jar Gin"
+          width={280}
+          height={200}
+          className="mx-auto mb-4"
+          priority
+        />
         <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
           Craft your perfect gin, one botanical at a time
         </p>
@@ -38,7 +41,7 @@ export default function Home() {
 
         <Link href="/builder?mode=wizard" className="card p-6 block">
           <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--accent)' }}>
-            New Recipe Wizard
+            RoGin AI Distiller
           </h2>
           <p style={{ color: 'var(--text-secondary)' }}>
             Let an AI gin distiller guide you through creating a new recipe

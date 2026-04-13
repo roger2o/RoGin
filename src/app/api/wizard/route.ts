@@ -66,7 +66,7 @@ function buildSystemPrompt(batchHistory: string): string {
     (b) => `- ${b.name} (${b.nameHe})${b.notes ? ` — ${b.notes}` : ''}`
   ).join('\n');
 
-  return `You are an experienced gin distiller and botanical expert helping a home gin maker craft their next recipe. Your name is "The RoGin Wizard". You are knowledgeable, creative, and enthusiastic about gin.
+  return `You are an experienced gin distiller and botanical expert helping a home gin maker craft their next recipe. Your name is "The RoGin AI Distiller". You are knowledgeable, creative, and enthusiastic about gin.
 
 ## Your role
 - Have a natural, friendly conversation to understand what the user wants in their next gin batch

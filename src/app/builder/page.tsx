@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { roundTo5 } from '@/lib/types';
 import type { BatchData, BotanicalData } from '@/lib/types';
 import { WizardChat } from './WizardChat';
@@ -251,7 +251,7 @@ function RecipeEditor({
         </span>
       </div>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-        Juniper base: {juniperMl}ml. Adjust any botanical amount below.
+        Adjust any amount below. Changing the Juniper base rescales the whole recipe.
       </p>
 
       {/* Botanical items */}
@@ -281,30 +281,22 @@ function RecipeEditor({
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {item.botanicalId === 1 ? (
-                <span
-                  className="text-xl font-bold tabular-nums"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {item.amount}
-                </span>
-              ) : (
-                <input
-                  type="number"
-                  className="input text-center font-bold tabular-nums"
-                  style={{
-                    width: 90,
-                    fontSize: '1.1rem',
-                    padding: '0.5rem',
-                  }}
-                  value={item.inputValue}
-                  onChange={(e) => onItemChange(idx, e.target.value)}
-                  onBlur={() => onItemBlur(idx)}
-                  min={0}
-                  step={5}
-                  inputMode="numeric"
-                />
-              )}
+              <input
+                type="number"
+                className="input text-center font-bold tabular-nums"
+                style={{
+                  width: 90,
+                  fontSize: '1.1rem',
+                  padding: '0.5rem',
+                  ...(item.botanicalId === 1 ? { color: 'var(--accent)' } : {}),
+                }}
+                value={item.inputValue}
+                onChange={(e) => onItemChange(idx, e.target.value)}
+                onBlur={() => onItemBlur(idx)}
+                min={0}
+                step={5}
+                inputMode="numeric"
+              />
               <span
                 className="text-sm"
                 style={{ color: 'var(--text-muted)' }}
@@ -502,6 +494,7 @@ function BuilderInner() {
   const [saved, setSaved] = useState(false);
   const [wizardJuniperConfirmed, setWizardJuniperConfirmed] = useState(false);
   const [wizardNotes, setWizardNotes] = useState('');
+  const juniperBaseRef = useRef(0);
 
   // Fetch batches and botanicals on mount
   useEffect(() => {
@@ -566,6 +559,7 @@ function BuilderInner() {
     const juniperMl = parseInt(juniperInput, 10);
     setSelectedBatch(batch);
     setEditorItems(buildEditorItems(batch, juniperMl));
+    juniperBaseRef.current = juniperMl;
     setWizardNotes('');
     setSaved(false);
     setStep(3);
@@ -585,17 +579,33 @@ function BuilderInner() {
   };
 
   const handleItemBlur = (idx: number) => {
-    setEditorItems((prev) => {
-      const next = [...prev];
-      const parsed = parseInt(next[idx].inputValue, 10);
-      const snapped = isNaN(parsed) || parsed < 0 ? 0 : roundTo5(parsed);
-      next[idx] = {
-        ...next[idx],
-        amount: snapped,
-        inputValue: String(snapped),
-      };
-      return next;
-    });
+    const next = [...editorItems];
+    const parsed = parseInt(next[idx].inputValue, 10);
+    const snapped = isNaN(parsed) || parsed < 0 ? 0 : roundTo5(parsed);
+    next[idx] = {
+      ...next[idx],
+      amount: snapped,
+      inputValue: String(snapped),
+    };
+
+    // If Juniper changed, rescale all other items proportionally
+    if (next[idx].botanicalId === 1 && juniperBaseRef.current > 0 && snapped > 0 && snapped !== juniperBaseRef.current) {
+      const scale = snapped / juniperBaseRef.current;
+      for (let i = 0; i < next.length; i++) {
+        if (next[i].botanicalId !== 1) {
+          const newAmount = roundTo5(next[i].amount * scale);
+          next[i] = {
+            ...next[i],
+            amount: newAmount,
+            inputValue: String(newAmount),
+          };
+        }
+      }
+      juniperBaseRef.current = snapped;
+      setJuniperInput(String(snapped));
+    }
+
+    setEditorItems(next);
   };
 
   const handleSave = async (name: string, date: string, notes: string) => {
@@ -668,6 +678,7 @@ function BuilderInner() {
         const juniperMl = juniperItem?.amount || 500;
         setJuniperInput(String(juniperMl));
         setEditorItems(buildEditorItems(batch, juniperMl));
+        juniperBaseRef.current = juniperMl;
         setSaved(false);
         setStep(3);
       }
@@ -733,6 +744,7 @@ function BuilderInner() {
 
       setSelectedBatch({ id: 0, name: 'AI Distiller Recipe', date: '', totalVolume: 0, notes: '', recipeId: null, recipeName: null, items: [] });
       setEditorItems(sortByAmount(wizardEditorItems));
+      juniperBaseRef.current = juniperMl;
       setWizardNotes(description || '');
       setSaved(false);
       setStep(3);

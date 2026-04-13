@@ -210,9 +210,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 3h14l-2 15H7L5 3z" />
-            <path d="M9 18h6" />
-            <path d="M12 18v3" />
-            <path d="M8 21h8" />
             <path d="M7 7h10" />
           </svg>
           <h3

@@ -6,7 +6,8 @@ import { WizardMessage, GeneratedRecipe } from '@/lib/types';
 interface WizardChatProps {
   juniperAmount: number;
   onRecipeGenerated: (
-    items: { botanicalName: string; botanicalNameHe: string; ratio: number }[]
+    items: { botanicalName: string; botanicalNameHe: string; ratio: number }[],
+    description: string
   ) => void;
 }
 
@@ -184,7 +185,7 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
   const handleUseRecipe = () => {
     if (!extractedRecipe) return;
     setRecipeUsed(true);
-    onRecipeGenerated(extractedRecipe.items);
+    onRecipeGenerated(extractedRecipe.items, extractedRecipe.description);
   };
 
   return (

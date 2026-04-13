@@ -186,9 +186,11 @@ function RecipeEditor({
   onItemChange,
   onItemBlur,
   onSave,
+  onAddBotanical,
   onBack,
   saving,
   saved,
+  initialNotes = '',
 }: {
   items: EditorItem[];
   juniperMl: number;
@@ -196,15 +198,34 @@ function RecipeEditor({
   onItemChange: (idx: number, value: string) => void;
   onItemBlur: (idx: number) => void;
   onSave: (name: string, date: string, notes: string) => void;
+  onAddBotanical: (name: string, nameHe: string) => Promise<string | null>;
   onBack: () => void;
   saving: boolean;
   saved: boolean;
+  initialNotes?: string;
 }) {
   const [batchName, setBatchName] = useState('');
   const [batchDate, setBatchDate] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [batchNotes, setBatchNotes] = useState('');
+  const [batchNotes, setBatchNotes] = useState(initialNotes);
+  const [newBotName, setNewBotName] = useState('');
+  const [newBotNameHe, setNewBotNameHe] = useState('');
+  const [addingBot, setAddingBot] = useState(false);
+  const [addError, setAddError] = useState('');
+
+  const handleAddBotanical = async () => {
+    setAddingBot(true);
+    setAddError('');
+    const error = await onAddBotanical(newBotName.trim(), newBotNameHe.trim());
+    if (error) {
+      setAddError(error);
+    } else {
+      setNewBotName('');
+      setNewBotNameHe('');
+    }
+    setAddingBot(false);
+  };
 
   const totalVolume = items.reduce((sum, item) => sum + item.amount, 0);
 
@@ -240,7 +261,7 @@ function RecipeEditor({
             key={item.botanicalId}
             className="card p-4 flex items-center justify-between gap-4"
             style={
-              idx === 0
+              item.botanicalId === 1
                 ? {
                     borderColor: 'var(--accent)',
                     background: 'var(--highlight-bg)',
@@ -260,7 +281,7 @@ function RecipeEditor({
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {idx === 0 ? (
+              {item.botanicalId === 1 ? (
                 <span
                   className="text-xl font-bold tabular-nums"
                   style={{ color: 'var(--accent)' }}
@@ -294,6 +315,56 @@ function RecipeEditor({
           </div>
         ))}
       </div>
+
+      {/* Add Botanical */}
+      {!saved && (
+        <div className="card p-4 mb-3">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[140px]">
+              <label
+                className="block text-xs font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                New Botanical
+              </label>
+              <input
+                type="text"
+                className="input"
+                placeholder="e.g. Cardamom"
+                value={newBotName}
+                onChange={(e) => { setNewBotName(e.target.value); setAddError(''); }}
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label
+                className="block text-xs font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Hebrew Name
+              </label>
+              <input
+                type="text"
+                className="input"
+                placeholder="optional"
+                value={newBotNameHe}
+                onChange={(e) => setNewBotNameHe(e.target.value)}
+                style={{ direction: 'rtl' }}
+              />
+            </div>
+            <button
+              className="btn-primary"
+              style={{ padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+              disabled={!newBotName.trim() || addingBot}
+              onClick={handleAddBotanical}
+            >
+              {addingBot ? 'Adding...' : '+ Add'}
+            </button>
+          </div>
+          {addError && (
+            <p className="text-sm mt-2" style={{ color: '#c53030' }}>{addError}</p>
+          )}
+        </div>
+      )}
 
       {/* Total */}
       <div
@@ -399,6 +470,16 @@ function RecipeEditor({
   );
 }
 
+// ─── Helpers ─────────────────────────────────────────────────
+
+function sortByAmount(items: EditorItem[]): EditorItem[] {
+  return [...items].sort((a, b) => {
+    if (a.botanicalId === 1) return -1;
+    if (b.botanicalId === 1) return 1;
+    return b.amount - a.amount;
+  });
+}
+
 // ─── Main Builder (inner component that uses useSearchParams) ─
 
 function BuilderInner() {
@@ -420,6 +501,7 @@ function BuilderInner() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [wizardJuniperConfirmed, setWizardJuniperConfirmed] = useState(false);
+  const [wizardNotes, setWizardNotes] = useState('');
 
   // Fetch batches and botanicals on mount
   useEffect(() => {
@@ -450,7 +532,7 @@ function BuilderInner() {
       const batchJuniperAmount = juniperItem?.amount || 1;
 
       // Build items for all botanicals, using the batch ratios
-      return botanicals.map((bot) => {
+      const items = botanicals.map((bot) => {
         if (bot.id === 1) {
           // Juniper is always the entered amount
           return {
@@ -475,6 +557,7 @@ function BuilderInner() {
           inputValue: String(amount),
         };
       });
+      return sortByAmount(items);
     },
     [botanicals]
   );
@@ -483,6 +566,7 @@ function BuilderInner() {
     const juniperMl = parseInt(juniperInput, 10);
     setSelectedBatch(batch);
     setEditorItems(buildEditorItems(batch, juniperMl));
+    setWizardNotes('');
     setSaved(false);
     setStep(3);
   };
@@ -546,6 +630,32 @@ function BuilderInner() {
     }
   };
 
+  const handleAddBotanical = async (name: string, nameHe: string): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/botanicals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, nameHe }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        return data.error || 'Failed to add botanical';
+      }
+      const newBot = await res.json();
+      setBotanicals(prev => [...prev, newBot]);
+      setEditorItems(prev => [...prev, {
+        botanicalId: newBot.id,
+        name: newBot.name,
+        nameHe: newBot.nameHe,
+        amount: 0,
+        inputValue: '0',
+      }]);
+      return null;
+    } catch {
+      return 'Failed to add botanical';
+    }
+  };
+
   // Handle ?from=batchId — auto-select a batch from the log
   const fromBatchId = searchParams.get('from');
   useEffect(() => {
@@ -566,7 +676,7 @@ function BuilderInner() {
 
   // Handle wizard generating a recipe
   const handleWizardRecipe = useCallback(
-    (items: { botanicalName: string; botanicalNameHe: string; ratio: number }[]) => {
+    async (items: { botanicalName: string; botanicalNameHe: string; ratio: number }[], description: string) => {
       const juniperMl = parseInt(juniperInput, 10) || 500;
       // Build editor items from wizard output
       const wizardEditorItems: EditorItem[] = botanicals.map((bot) => {
@@ -598,18 +708,32 @@ function BuilderInner() {
           (b) => b.name.toLowerCase() === item.botanicalName.toLowerCase()
         );
         if (!exists && item.ratio > 0) {
-          wizardEditorItems.push({
-            botanicalId: -1, // placeholder for new botanical
-            name: item.botanicalName,
-            nameHe: item.botanicalNameHe,
-            amount: roundTo5(item.ratio * juniperMl),
-            inputValue: String(roundTo5(item.ratio * juniperMl)),
-          });
+          try {
+            const res = await fetch('/api/botanicals', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: item.botanicalName, nameHe: item.botanicalNameHe }),
+            });
+            if (res.ok) {
+              const newBot = await res.json();
+              wizardEditorItems.push({
+                botanicalId: newBot.id,
+                name: newBot.name,
+                nameHe: newBot.nameHe,
+                amount: roundTo5(item.ratio * juniperMl),
+                inputValue: String(roundTo5(item.ratio * juniperMl)),
+              });
+              setBotanicals(prev => [...prev, newBot]);
+            }
+          } catch {
+            // Skip botanical if creation fails
+          }
         }
       }
 
       setSelectedBatch({ id: 0, name: 'AI Distiller Recipe', date: '', totalVolume: 0, notes: '', recipeId: null, recipeName: null, items: [] });
-      setEditorItems(wizardEditorItems);
+      setEditorItems(sortByAmount(wizardEditorItems));
+      setWizardNotes(description || '');
       setSaved(false);
       setStep(3);
     },
@@ -717,9 +841,11 @@ function BuilderInner() {
           onItemChange={handleItemChange}
           onItemBlur={handleItemBlur}
           onSave={handleSave}
+          onAddBotanical={handleAddBotanical}
           onBack={() => setStep(2)}
           saving={saving}
           saved={saved}
+          initialNotes={wizardNotes}
         />
       )}
     </div>

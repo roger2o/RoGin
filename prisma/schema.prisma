@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Botanical {
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  nameHe   String @default("")
+  notes    String @default("")
+  sortOrder Int   @default(0)
+
+  recipeItems RecipeItem[]
+  batchItems  BatchItem[]
+}
+
+model Recipe {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String   @default("default")
+
+  items   RecipeItem[]
+  batches Batch[]
+}
+
+model RecipeItem {
+  id         Int   @id @default(autoincrement())
+  recipeId   Int
+  botanicalId Int
+  ratio      Float // proportion relative to Juniper = 1.0
+
+  recipe    Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  botanical Botanical @relation(fields: [botanicalId], references: [id])
+
+  @@unique([recipeId, botanicalId])
+}
+
+model Batch {
+  id          Int      @id @default(autoincrement())
+  name        String   @default("")
+  date        DateTime
+  totalVolume Float
+  notes       String   @default("")
+  recipeId    Int?
+  userId      String   @default("default")
+  createdAt   DateTime @default(now())
+
+  recipe Recipe? @relation(fields: [recipeId], references: [id])
+  items  BatchItem[]
+}
+
+model BatchItem {
+  id          Int   @id @default(autoincrement())
+  batchId     Int
+  botanicalId Int
+  amount      Float // actual ml used
+
+  batch     Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  botanical Botanical @relation(fields: [botanicalId], references: [id])
+
+  @@unique([batchId, botanicalId])
+}

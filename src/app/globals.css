@@ -1,26 +1,157 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #EFE6D8;
+  --bg-secondary: #FBF7F1;
+  --accent: #8C1D2C;
+  --accent-muted: #A94450;
+  --text-primary: #2D2D2D;
+  --text-secondary: #555555;
+  --text-muted: #777777;
+  --border: #E0D9D0;
+  --border-light: #D5CEC4;
+  --card-bg: #FBF7F1;
+  --nav-bg: rgba(239, 230, 216, 0.95);
+  --nav-bg-mobile: rgba(239, 230, 216, 0.97);
+  --input-bg: #FFFFFF;
+  --highlight-bg: #F0EBE3;
+  --chip-bg: rgba(0, 0, 0, 0.03);
+  --chip-border: #D5CEC4;
+  --chip-text: #2D2D2D;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-accent: var(--accent);
+  --color-accent-muted: var(--accent-muted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-card-bg: var(--card-bg);
+  --color-input-bg: var(--input-bg);
+  --color-highlight-bg: var(--highlight-bg);
+  --color-chip-bg: var(--chip-bg);
+  --color-chip-border: var(--chip-border);
+  --color-chip-text: var(--chip-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+  @apply px-6 py-3 font-bold tracking-wide transition-all duration-200 rounded-lg;
+  background: var(--accent);
+  color: #FFFFFF;
+  border: 1px solid var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-muted);
+  box-shadow: 0 0 15px rgba(140, 29, 44, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled:hover {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 font-bold tracking-wide transition-all duration-200 rounded-lg;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.btn-secondary:hover {
+  background: var(--accent);
+  color: #FFFFFF;
+  box-shadow: 0 0 15px rgba(140, 29, 44, 0.3);
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== INPUTS ===== */
+.input {
+  @apply w-full px-4 py-3 outline-none transition-colors rounded-lg;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(140, 29, 44, 0.15);
+}
+
+/* ===== CHIPS ===== */
+.chip {
+  @apply px-4 py-2 text-sm font-medium cursor-pointer transition-all duration-300 rounded-full;
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
+  color: var(--chip-text);
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chip.selected {
+  border-color: var(--accent);
+  background: rgba(140, 29, 44, 0.08);
+  color: var(--accent);
+  box-shadow: 0 1px 4px rgba(140, 29, 44, 0.15);
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ===== ANIMATIONS ===== */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out;
+}
+
+/* ===== SAFE AREA ===== */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

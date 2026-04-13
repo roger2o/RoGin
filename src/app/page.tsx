@@ -1,65 +1,61 @@
-import Image from "next/image";
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="text-center mb-12 animate-fade-in-up">
+        <h1
+          className="text-5xl font-bold mb-3"
+          style={{ color: 'var(--accent)' }}
+        >
+          RoGin
+        </h1>
+        <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+          Craft your perfect gin, one botanical at a time
+        </p>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Link href="/builder" className="card p-6 block">
+          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--accent)' }}>
+            Recipe Builder
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Start from a previous batch or create something new with the AI gin
+            distiller wizard. Enter your Juniper amount and build your blend.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        </Link>
+
+        <Link href="/log" className="card p-6 block">
+          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--accent)' }}>
+            Batch Log
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Browse your gin-making history. See what worked, what to try
+            differently, and pick a batch as your next starting point.
+          </p>
+        </Link>
+
+        <Link href="/builder?mode=wizard" className="card p-6 block">
+          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--accent)' }}>
+            New Recipe Wizard
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Let an AI gin distiller guide you through creating a new recipe
+            based on your taste preferences and past batches.
+          </p>
+        </Link>
+
+        <Link href="/beginner" className="card p-6 block">
+          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--accent)' }}>
+            Beginner Guide
+          </h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            New to gin making? Start here with a simple single-jar infusion
+            method and learn how botanicals shape flavour.
+          </p>
+        </Link>
+      </div>
     </div>
   );
 }

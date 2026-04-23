@@ -59,14 +59,21 @@ async function fetchBatchHistory(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// Build the system prompt
+// Build the system prompt as two blocks — a cached static prefix and a
+// dynamic suffix containing the batch history.
+//
+// Prompt caching is a prefix match: any byte change invalidates everything
+// after it. By placing the batch history (which grows whenever the user
+// logs a new batch) *after* the cache breakpoint, the ~1,500-token static
+// prefix is served from cache on repeat wizard calls — roughly 90% cheaper
+// on those tokens and 1–2 seconds faster time-to-first-token.
 // ---------------------------------------------------------------------------
-function buildSystemPrompt(batchHistory: string): string {
+function buildSystemPrompt(batchHistory: string): Anthropic.TextBlockParam[] {
   const botanicalList = DEFAULT_BOTANICALS.map(
     (b) => `- ${b.name} (${b.nameHe})${b.notes ? ` — ${b.notes}` : ''}`
   ).join('\n');
 
-  return `You are an experienced gin distiller and botanical expert helping a home gin maker craft their next recipe. Your name is "The RoGin AI Distiller". You are knowledgeable, creative, and enthusiastic about gin.
+  const staticPrompt = `You are an experienced gin distiller and botanical expert helping a home gin maker craft their next recipe. Your name is "The RoGin AI Distiller". You are knowledgeable, creative, and enthusiastic about gin.
 
 ## Your role
 - Have a natural, friendly conversation to understand what the user wants in their next gin batch
@@ -80,11 +87,7 @@ ${botanicalList}
 
 You may also suggest NEW botanicals they don't yet have. Since the user shops in Israel, always include the Hebrew name (שם בעברית) for any new botanical you suggest, so they can find it easily at the spice market. Common Israeli spice market botanicals include: lavender (לבנדר), dried rose petals (עלי ורד), lemongrass (למון גראס), cubeb pepper (פלפל קוביבה), angelica root (שורש אנג'ליקה), orris root (שורש אירוס), grains of paradise (גרעיני גן עדן), dried citrus peel (קליפות הדרים), za'atar (זעתר), sumac (סומאק), dried hibiscus (היביסקוס), pink peppercorn (פלפל ורוד), bay leaves (עלי דפנה), fennel seeds (זרעי שומר), star anise (כוכב אניס), dried ginger (ג'ינג'ר מיובש), dried chamomile (קמומיל), dried mint (נענע מיובשת).
 
-## Past batch history
-Review this carefully. Use tasting notes to guide suggestions — avoid repeating issues, build on successes.
-${batchHistory}
-
-### Key observations to keep in mind:
+## Key observations to keep in mind
 - Batch 1 was "Fantastic!!" — this is a proven baseline recipe
 - Batch 3 had "Too much cinnamon" — Ceylon Cinnamon ratio was 0.25 of Juniper. Be cautious with cinnamon, keep ratio below 0.15
 - Batch 7 had "Too many flavours?" — it used 10 different botanicals. When using many botanicals, keep secondary ones at lower ratios
@@ -121,6 +124,15 @@ When you have enough information (after 2-3 conversational exchanges), generate 
 - When suggesting ideas, explain WHY a botanical combination works (e.g., "cardamom and vanilla create a warm, rounded sweetness")
 - Don't ask more than 2 questions at a time
 - After generating the recipe, explain your reasoning and invite feedback`;
+
+  const dynamicPrompt = `## Past batch history
+Review this carefully. Use tasting notes to guide suggestions — avoid repeating issues, build on successes.
+${batchHistory}`;
+
+  return [
+    { type: 'text', text: staticPrompt, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: dynamicPrompt },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +187,11 @@ export async function POST(request: NextRequest) {
       system: systemPrompt,
       messages: claudeMessages,
     });
+
+    // Log token usage so cache hits are observable in server logs.
+    // Look for `cache_read_input_tokens > 0` on repeat calls to confirm
+    // the static prefix is being served from cache.
+    console.log('[wizard] usage:', response.usage);
 
     // Extract text content from the response
     const assistantMessage = response.content

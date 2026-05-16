@@ -49,6 +49,13 @@ RoGin replaces a manually maintained spreadsheet that has been used to track hom
 - Offers flavour variation tips (e.g., "swap rosemary for thyme for earthier notes") to help newcomers experiment.
 - Not connected to the batch log or recipe builder -- purely educational.
 
+### Ingredient Distilling Manager (planned)
+- A feature to manage the distilling and infusion of individual ingredients -- the upstream step before a recipe can be built.
+- Track which botanicals are currently infusing in vodka, when each jar was started, and when it will be ready to use.
+- Record the quantity available for each infusion so the Recipe Builder knows what is actually on hand.
+- Surface alerts when an infusion is ready, nearing readiness, or running low.
+- Scope, UI, and data model still to be defined.
+
 ---
 
 ## UX Considerations
@@ -124,6 +131,7 @@ The application is **built and deployed**. All core features described above are
 - AI Distiller wizard with Claude integration and batch history awareness -- complete.
 - Batch Log with historical seed data, expandable detail view, and editable tasting notes -- complete.
 - Beginner Guide with shopping list, method, and flavour variations -- complete.
+- Ingredient Distilling Manager -- planned, not yet built.
 - Deployed to Netlify with Turso hosted database.
 
 The project has nine commits, progressing from initial scaffolding through feature build-out to deployment configuration and polish. The most recent work (April 2026) made the Juniper amount editable directly in the recipe editor with automatic rescaling, updated the app icon and favicon to a custom tumbler glass design, and refined several deployment details for the Netlify and Turso production environment.
@@ -138,5 +146,6 @@ The AI wizard now uses Anthropic prompt caching. The static portion of the syste
 - **Authentication timeline.** The database is ready for multi-user support, but no login system exists. When is this needed, and should it use Google sign-in as planned?
 - **Cost monitoring.** How will Claude API usage and costs be tracked over time? Are there budget thresholds that should trigger alerts?
 - **Backup strategy.** What is the backup and recovery plan for the Turso production database?
-- **Future features.** The project description lists several enhancements not yet in scope: botanical inventory tracking, batch comparison views, insights and charts, and recipe export/sharing. Which of these should be prioritised next?
+- **Future features.** The project description lists several enhancements not yet in scope: botanical inventory tracking, batch comparison views, insights and charts, and recipe export/sharing. The newly added **Ingredient Distilling Manager** (see Features section) is also pending. Which of these should be prioritised next?
 - **UI consistency and colour palette.** Accent colours (the warm beige and burgundy that define RoGin's look) are currently applied per component. This is a gap against the shared `ui-consistency` skill. Consolidate to a shared palette file (`src/lib/colors.ts`) with semantic names, and align with TDAI (its sibling Next.js + LLM project, which shares the cream-and-burgundy visual language). Because RoGin is small, this can be a quick, clean pass when next touching the UI.
+- **Evaluate `emil-design-eng` and `impeccable` skills on a real polish pass.** Both are downloaded but unvalidated — currently set to explicit-invoke only so they cannot pollute regular UI work. Pick a small UI task (e.g. activity tracker polish, batch log row animation, AI wizard step transitions) and run it once through `/emil-design-eng` and once through `/impeccable`. Compare the output against `ui-consistency` house rules. Decide afterwards: promote to auto-trigger, narrow the trigger, or retire. Pairs naturally with the colour-palette consolidation above.

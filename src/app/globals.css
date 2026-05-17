@@ -1,23 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #EFE6D8;
-  --bg-secondary: #FBF7F1;
-  --accent: #8C1D2C;
+  /* Surfaces — all neutrals are tinted toward the burgundy hue.
+     No #FFF, no #000. */
+  --bg-primary: #EFE6D8;      /* warm beige, page bg */
+  --bg-secondary: #FBF7F1;    /* cream, panels */
+  --accent: #8C1D2C;          /* deep burgundy */
   --accent-muted: #A94450;
-  --text-primary: #2D2D2D;
-  --text-secondary: #555555;
-  --text-muted: #777777;
+  --text-primary: #2D2622;    /* warm near-black, was #2D2D2D */
+  --text-secondary: #524845;  /* warm mid, was #555555 */
+  --text-muted: #6B5F5A;      /* warm muted, was #777777 — now clears AA at 14px */
   --border: #E0D9D0;
   --border-light: #D5CEC4;
   --card-bg: #FBF7F1;
   --nav-bg: rgba(239, 230, 216, 0.95);
   --nav-bg-mobile: rgba(239, 230, 216, 0.97);
-  --input-bg: #FFFFFF;
+  --input-bg: #FDFAF5;        /* warm-tinted near-white, was #FFFFFF */
   --highlight-bg: #F0EBE3;
-  --chip-bg: rgba(0, 0, 0, 0.03);
+  --chip-bg: rgba(45, 38, 34, 0.03);
   --chip-border: #D5CEC4;
-  --chip-text: #2D2D2D;
+  --chip-text: #2D2622;
+
+  /* Motion: exponential ease-out per shared design law.
+     200ms is the upper end of product-register range (150–250ms). */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 140ms;
+  --duration-base: 200ms;
 }
 
 @theme inline {
@@ -46,40 +54,62 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ===== BUTTONS ===== */
-.btn-primary {
-  @apply px-6 py-3 font-bold tracking-wide transition-all duration-200 rounded-lg;
-  background: var(--accent);
-  color: #FFFFFF;
-  border: 1px solid var(--accent);
+/* ===== FOCUS — visible keyboard ring on every interactive element.
+   Was missing on buttons, cards-as-buttons, chips. Real a11y bug. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
-.btn-primary:hover {
-  background: var(--accent-muted);
-  box-shadow: 0 0 15px rgba(140, 29, 44, 0.3);
+/* ===== BUTTONS ===== */
+.btn-primary {
+  @apply px-6 py-3 font-bold tracking-wide rounded-lg;
+  background: var(--accent);
+  color: #FBF7F1;
+  border: 1px solid var(--accent);
+  transition: transform var(--duration-fast) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    background: var(--accent-muted);
+    box-shadow: 0 4px 12px rgba(140, 29, 44, 0.18);
+  }
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn-primary:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.btn-primary:disabled:hover {
-  background: var(--accent);
-  box-shadow: none;
-}
-
 .btn-secondary {
-  @apply px-6 py-3 font-bold tracking-wide transition-all duration-200 rounded-lg;
+  @apply px-6 py-3 font-bold tracking-wide rounded-lg;
   background: transparent;
   color: var(--accent);
   border: 1px solid var(--accent);
+  transition: transform var(--duration-fast) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
-.btn-secondary:hover {
-  background: var(--accent);
-  color: #FFFFFF;
-  box-shadow: 0 0 15px rgba(140, 29, 44, 0.3);
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover {
+    background: var(--accent);
+    color: #FBF7F1;
+    box-shadow: 0 4px 12px rgba(140, 29, 44, 0.18);
+  }
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 /* ===== CARDS ===== */
@@ -87,46 +117,64 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  transition: border-color var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 
-.card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+}
+
+button.card:active:not(:disabled) {
+  transform: scale(0.985);
 }
 
 /* ===== INPUTS ===== */
 .input {
-  @apply w-full px-4 py-3 outline-none transition-colors rounded-lg;
+  @apply w-full px-4 py-3 outline-none rounded-lg;
   background: var(--input-bg);
   border: 1px solid var(--border);
   color: var(--text-primary);
+  transition: border-color var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
 }
 
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(140, 29, 44, 0.15);
+  box-shadow: 0 0 0 3px rgba(140, 29, 44, 0.14);
 }
 
 /* ===== CHIPS ===== */
 .chip {
-  @apply px-4 py-2 text-sm font-medium cursor-pointer transition-all duration-300 rounded-full;
+  @apply px-4 py-2 text-sm font-medium cursor-pointer rounded-full;
   background: var(--chip-bg);
   border: 1px solid var(--chip-border);
   color: var(--chip-text);
+  transition: border-color var(--duration-base) var(--ease-out),
+              background-color var(--duration-base) var(--ease-out),
+              color var(--duration-base) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
 }
 
-.chip:hover {
-  border-color: var(--accent);
-  color: var(--text-primary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+}
+
+.chip:active {
+  transform: scale(0.97);
 }
 
 .chip.selected {
   border-color: var(--accent);
   background: rgba(140, 29, 44, 0.08);
   color: var(--accent);
-  box-shadow: 0 1px 4px rgba(140, 29, 44, 0.15);
 }
 
 /* ===== SCROLLBAR ===== */
@@ -135,20 +183,42 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
+/* ===== SKELETON — loading placeholders that hold the real layout shape */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--highlight-bg) 0%,
+    var(--bg-secondary) 50%,
+    var(--highlight-bg) 100%
+  );
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
 /* ===== ANIMATIONS ===== */
 @keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.5s ease-out;
+  animation: fade-in-up var(--duration-base) var(--ease-out) both;
+}
+
+/* ===== REDUCED MOTION — accessibility floor.
+   Keep opacity, drop transform. Cancel skeleton shimmer too. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up { animation: none; }
+  .skeleton { animation: none; background: var(--highlight-bg); }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ===== SAFE AREA ===== */

@@ -198,51 +198,50 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         background: 'var(--bg-primary)',
       }}
     >
-      {/* Header */}
+      {/* Header — single line, no redundant subtitle.
+          Saves vertical space; the page already establishes context. */}
       <div
         style={{
-          padding: '12px 16px',
+          padding: '10px 16px',
           borderBottom: '1px solid var(--border)',
           background: 'var(--bg-secondary)',
           flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 3h14l-2 15H7L5 3z" />
-            <path d="M7 7h10" />
-          </svg>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: '16px',
-              fontWeight: 700,
-              color: 'var(--accent)',
-            }}
-          >
-            RoGin AI Distiller
-          </h3>
-        </div>
-        <p
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 3h14l-2 15H7L5 3z" />
+          <path d="M7 7h10" />
+        </svg>
+        <h3
           style={{
-            margin: '4px 0 0 0',
-            fontSize: '13px',
-            color: 'var(--text-secondary)',
+            margin: 0,
+            fontSize: '15px',
+            fontWeight: 700,
+            color: 'var(--accent)',
+            letterSpacing: '0.01em',
           }}
         >
-          Chat with an AI distiller to craft your next recipe
-        </p>
+          RoGin AI Distiller
+        </h3>
       </div>
 
-      {/* Messages area */}
+      {/* Messages area.
+          aria-live="polite" so screen readers announce assistant responses
+          as they arrive. */}
       <div
+        role="log"
+        aria-live="polite"
+        aria-label="Distiller conversation"
         style={{
           flex: 1,
           overflowY: 'auto',
           padding: '16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
+          gap: '14px',
           minHeight: 0,
         }}
       >
@@ -260,118 +259,153 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
           return (
             <div
               key={idx}
+              className="animate-fade-in-up"
               style={{
                 display: 'flex',
-                justifyContent: isUser ? 'flex-end' : 'flex-start',
-                animation: 'fade-in-up 0.3s ease-out',
+                flexDirection: 'column',
+                alignItems: isUser ? 'flex-end' : 'flex-start',
+                gap: '8px',
               }}
             >
-              <div
-                style={{
-                  maxWidth: '85%',
-                  padding: '10px 14px',
-                  borderRadius: isUser
-                    ? '16px 16px 4px 16px'
-                    : '16px 16px 16px 4px',
-                  background: isUser ? 'var(--accent)' : 'var(--card-bg)',
-                  color: isUser ? '#FFFFFF' : 'var(--text-primary)',
-                  border: isUser ? 'none' : '1px solid var(--border)',
-                  fontSize: '14px',
-                  lineHeight: '1.5',
-                  wordBreak: 'break-word',
-                }}
-              >
-                {renderMessageText(displayText)}
+              {/* Chat bubble */}
+              {displayText && (
+                <div
+                  style={{
+                    maxWidth: '85%',
+                    padding: '10px 14px',
+                    borderRadius: isUser
+                      ? '16px 16px 4px 16px'
+                      : '16px 16px 16px 4px',
+                    background: isUser ? 'var(--accent)' : 'var(--card-bg)',
+                    color: isUser ? 'var(--bg-secondary)' : 'var(--text-primary)',
+                    border: isUser ? 'none' : '1px solid var(--border)',
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {renderMessageText(displayText)}
+                </div>
+              )}
 
-                {/* Recipe card */}
-                {recipe && (
-                  <div
+              {/* Recipe — rendered ADJACENT to the bubble, not nested inside.
+                  Avoids the nested-card pattern. Semantic <table> so screen
+                  readers announce rows as "Juniper, 1.0". */}
+              {recipe && (
+                <section
+                  aria-labelledby={`recipe-${idx}-heading`}
+                  style={{
+                    width: '100%',
+                    maxWidth: '85%',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '14px',
+                    padding: '14px 16px',
+                  }}
+                >
+                  <header
                     style={{
-                      marginTop: '12px',
-                      padding: '12px',
-                      borderRadius: '10px',
-                      background: 'var(--highlight-bg)',
-                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                      gap: '8px',
                     }}
                   >
-                    <p
+                    <h4
+                      id={`recipe-${idx}-heading`}
                       style={{
-                        margin: '0 0 8px 0',
+                        margin: 0,
+                        fontSize: '11px',
                         fontWeight: 700,
-                        fontSize: '13px',
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
                         color: 'var(--accent)',
                       }}
                     >
                       Suggested Recipe
-                    </p>
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        fontSize: '13px',
-                      }}
-                    >
+                    </h4>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {recipe.items.length} botanicals
+                    </span>
+                  </header>
+                  <table
+                    style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <caption className="sr-only">Botanical ratios</caption>
+                    <tbody>
                       {recipe.items.map((item, i) => (
-                        <div
+                        <tr
                           key={i}
                           style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            padding: '4px 0',
                             borderBottom:
                               i < recipe.items.length - 1
                                 ? '1px solid var(--border)'
                                 : 'none',
                           }}
                         >
-                          <span>
-                            {item.botanicalName}{' '}
-                            <span
-                              style={{
-                                color: 'var(--text-muted)',
-                                fontSize: '12px',
-                              }}
-                            >
-                              ({item.botanicalNameHe})
-                            </span>
-                          </span>
-                          <span
+                          <td style={{ padding: '6px 0', color: 'var(--text-primary)' }}>
+                            {item.botanicalName}
+                          </td>
+                          <td
+                            lang="he"
                             style={{
+                              padding: '6px 4px',
+                              color: 'var(--text-muted)',
+                              fontSize: '12px',
+                              direction: 'rtl',
+                              textAlign: 'left',
+                            }}
+                          >
+                            {item.botanicalNameHe}
+                          </td>
+                          <td
+                            style={{
+                              padding: '6px 0',
+                              textAlign: 'right',
                               fontWeight: 600,
                               fontFamily: 'var(--font-mono)',
                               color: 'var(--accent)',
+                              fontVariantNumeric: 'tabular-nums',
                             }}
                           >
                             {item.ratio === 1.0
-                              ? '1.0 (base)'
+                              ? '1.00 base'
                               : item.ratio.toFixed(2)}
-                          </span>
-                        </div>
+                          </td>
+                        </tr>
                       ))}
-                    </div>
-                    {recipe.description && (
-                      <p
-                        style={{
-                          margin: '8px 0 0 0',
-                          fontSize: '12px',
-                          color: 'var(--text-secondary)',
-                          fontStyle: 'italic',
-                        }}
-                      >
-                        {recipe.description}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </tbody>
+                  </table>
+                  {recipe.description && (
+                    <p
+                      style={{
+                        margin: '12px 0 0 0',
+                        fontSize: '12px',
+                        lineHeight: '1.5',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {recipe.description}
+                    </p>
+                  )}
+                </section>
+              )}
             </div>
           );
         })}
 
         {/* Loading indicator */}
         {isLoading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <div
+            className="animate-fade-in-up"
+            style={{ display: 'flex', justifyContent: 'flex-start' }}
+            aria-label="Distiller is thinking"
+          >
             <div
               style={{
                 padding: '10px 14px',
@@ -382,16 +416,7 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
                 color: 'var(--text-secondary)',
               }}
             >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  gap: '4px',
-                  alignItems: 'center',
-                }}
-              >
-                Thinking
-                <span className="animate-pulse">...</span>
-              </span>
+              Thinking…
             </div>
           </div>
         )}
@@ -399,12 +424,13 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         {/* Error message */}
         {error && (
           <div
+            role="alert"
             style={{
               padding: '10px 14px',
               borderRadius: '10px',
-              background: '#FFF0F0',
-              border: '1px solid #FFCCCC',
-              color: '#CC3333',
+              background: 'rgba(140, 29, 44, 0.06)',
+              border: '1px solid var(--accent-muted)',
+              color: 'var(--accent)',
               fontSize: '13px',
             }}
           >
@@ -412,7 +438,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
             <button
               onClick={() => {
                 setError(null);
-                // Retry: resend current messages
                 sendMessages(messages);
               }}
               style={{
@@ -420,9 +445,10 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
                 textDecoration: 'underline',
                 background: 'none',
                 border: 'none',
-                color: '#CC3333',
+                color: 'var(--accent)',
                 cursor: 'pointer',
                 fontSize: '13px',
+                fontWeight: 600,
               }}
             >
               Retry
@@ -433,9 +459,11 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         <div ref={messagesEndRef} />
       </div>
 
-      {/* "Use This Recipe" button — shown when a recipe has been generated */}
+      {/* "Use This Recipe" CTA — state-marking entrance (a state change, not decoration). */}
       {extractedRecipe && !recipeUsed && (
         <div
+          key="use-recipe-cta"
+          className="animate-fade-in-up"
           style={{
             padding: '12px 16px',
             borderTop: '1px solid var(--border)',
@@ -450,13 +478,16 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
             onClick={handleUseRecipe}
             style={{ width: '100%', maxWidth: '400px' }}
           >
-            Use This Recipe
+            Use this recipe
           </button>
         </div>
       )}
 
       {recipeUsed && (
         <div
+          key="recipe-loaded-confirmation"
+          className="animate-fade-in-up"
+          role="status"
           style={{
             padding: '12px 16px',
             borderTop: '1px solid var(--border)',
@@ -469,7 +500,7 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
             fontWeight: 600,
           }}
         >
-          Recipe loaded into the editor!
+          Recipe loaded into the editor
         </div>
       )}
 

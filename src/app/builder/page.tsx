@@ -129,8 +129,13 @@ function StartingPointStep({
       </h3>
 
       {loading ? (
-        <div className="py-8 text-center" style={{ color: 'var(--text-secondary)' }}>
-          Loading batches...
+        <div className="grid gap-3" aria-busy="true" aria-label="Loading batches">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="card p-4">
+              <div className="skeleton" style={{ height: 16, width: '40%', marginBottom: 8 }} />
+              <div className="skeleton" style={{ height: 12, width: '85%' }} />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid gap-3">
@@ -755,8 +760,10 @@ function BuilderInner() {
   // If mode=wizard, show the wizard chat
   if (mode === 'wizard') {
     const juniperMl = parseInt(juniperInput, 10);
-    // If Juniper amount not yet confirmed, show the input step
-    if (!wizardJuniperConfirmed) {
+    const hasValidJuniper = !isNaN(juniperMl) && juniperMl > 0;
+    // If Juniper amount not yet entered, show the input step.
+    // If it was already entered in step 1, inherit it and skip this screen.
+    if (!hasValidJuniper && !wizardJuniperConfirmed) {
       return (
         <div className="max-w-2xl mx-auto px-4 py-8">
           <button
@@ -796,20 +803,24 @@ function BuilderInner() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Progress indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      {/* Progress indicator — 3 numbered circles with connector lines.
+          Colours transition smoothly when the step advances. */}
+      <div className="flex items-center gap-2 mb-8" aria-label="Builder progress">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+              aria-current={step === s ? 'step' : undefined}
               style={{
                 background:
                   step >= s ? 'var(--accent)' : 'var(--highlight-bg)',
-                color: step >= s ? '#FFFFFF' : 'var(--text-muted)',
+                color: step >= s ? 'var(--bg-secondary)' : 'var(--text-muted)',
                 border:
                   step >= s
                     ? '1px solid var(--accent)'
                     : '1px solid var(--border)',
+                transition:
+                  'background-color 200ms var(--ease-out), border-color 200ms var(--ease-out), color 200ms var(--ease-out)',
               }}
             >
               {s}
@@ -818,8 +829,8 @@ function BuilderInner() {
               <div
                 className="w-8 h-0.5"
                 style={{
-                  background:
-                    step > s ? 'var(--accent)' : 'var(--border)',
+                  background: step > s ? 'var(--accent)' : 'var(--border)',
+                  transition: 'background-color 220ms var(--ease-out) 80ms',
                 }}
               />
             )}

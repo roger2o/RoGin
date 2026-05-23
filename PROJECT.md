@@ -77,6 +77,7 @@ RoGin replaces a manually maintained spreadsheet that has been used to track hom
 - **AI integration via server-side API.** The AI wizard runs through a server-side endpoint that calls the Claude API. The user's API key never reaches the browser. A rate limiter (20 requests per minute) prevents runaway costs.
 - **Seed data on first run.** Historical batch data from the original spreadsheet is imported into the database automatically, so the app is immediately useful from day one.
 - **Beginner section is independent.** The beginner guide is static content with no connection to the recipe builder or batch log, keeping it simple for newcomers.
+- **Drafts are Batch rows with an `isDraft` flag, not a separate model.** When the AI Distiller suggests a recipe, it is saved into the same `Batch` table as a real batch, just with `isDraft = true`. *Why:* the Batch Log is the single canonical "list of recipes I care about", and drafts conceptually belong there alongside real batches — separate tables would have forced parallel UI, two separate APIs, and two separate "use as starting point" paths. Storing drafts at a 500 ml placeholder Juniper amount means the existing rescale logic in the Recipe Builder works unchanged when a draft is loaded.
 
 ---
 

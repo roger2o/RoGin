@@ -14,92 +14,21 @@ interface EditorItem {
   inputValue: string; // separate string state for controlled input
 }
 
-// ─── Step 1: Juniper Amount ───────────────────────────────────
-
-function JuniperStep({
-  juniperMl,
-  onJuniperChange,
-  onNext,
-}: {
-  juniperMl: string;
-  onJuniperChange: (v: string) => void;
-  onNext: () => void;
-}) {
-  const value = parseInt(juniperMl, 10);
-  const valid = !isNaN(value) && value > 0;
-
-  return (
-    <div className="animate-fade-in-up">
-      <div className="card p-6 md:p-8">
-        <h2
-          className="text-2xl font-bold mb-2"
-          style={{ color: 'var(--accent)' }}
-        >
-          How much Juniper infusion?
-        </h2>
-        <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Enter the total amount of Juniper + Lemon infusion you have ready (in
-          ml). This drives all the other botanical amounts.
-        </p>
-        <div className="flex gap-3 items-center">
-          <input
-            type="number"
-            className="input text-2xl font-bold text-center"
-            style={{ maxWidth: 200, fontSize: '1.5rem' }}
-            placeholder="e.g. 500"
-            value={juniperMl}
-            onChange={(e) => onJuniperChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && valid) onNext();
-            }}
-            min={0}
-            step={5}
-            inputMode="numeric"
-          />
-          <span
-            className="text-lg font-medium"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            ml
-          </span>
-        </div>
-        <button
-          className="btn-primary mt-6"
-          disabled={!valid}
-          onClick={onNext}
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Step 2: Choose Starting Point ────────────────────────────
+// ─── Step 1: Choose Starting Point ────────────────────────────
 
 function StartingPointStep({
   batches,
   loading,
   onSelectBatch,
   onWizard,
-  onBack,
 }: {
   batches: BatchData[];
   loading: boolean;
   onSelectBatch: (batch: BatchData) => void;
   onWizard: () => void;
-  onBack: () => void;
 }) {
   return (
     <div className="animate-fade-in-up">
-      <button
-        onClick={onBack}
-        className="mb-4 text-sm font-medium flex items-center gap-1"
-        style={{ color: 'var(--accent)' }}
-      >
-        &larr; Back
-      </button>
-
       <h2
         className="text-2xl font-bold mb-6"
         style={{ color: 'var(--accent)' }}
@@ -186,7 +115,6 @@ function StartingPointStep({
 
 function RecipeEditor({
   items,
-  juniperMl,
   sourceBatchName,
   onItemChange,
   onItemBlur,
@@ -197,7 +125,6 @@ function RecipeEditor({
   saved,
 }: {
   items: EditorItem[];
-  juniperMl: number;
   sourceBatchName: string;
   onItemChange: (idx: number, value: string) => void;
   onItemBlur: (idx: number) => void;
@@ -482,12 +409,11 @@ function BuilderInner() {
   const router = useRouter();
   const mode = searchParams.get('mode');
 
-  // Redirect to wizard page if mode=wizard
-  // (Wizard is being built by another agent; this just preserves the link)
-  // We still render the builder but with a wizard redirect note if needed.
-
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [juniperInput, setJuniperInput] = useState('');
+  // If the user arrived with ?from=<batchId>, jump straight to the editor.
+  // Initializing step synchronously this way avoids the brief flash of the
+  // "Choose a starting point" screen before the effect below resolves.
+  const fromBatchId = searchParams.get('from');
+  const [step, setStep] = useState<1 | 2>(fromBatchId ? 2 : 1);
   const [batches, setBatches] = useState<BatchData[]>([]);
   const [botanicals, setBotanicals] = useState<BotanicalData[]>([]);
   const [batchesLoading, setBatchesLoading] = useState(true);
@@ -557,12 +483,16 @@ function BuilderInner() {
   );
 
   const handleSelectBatch = (batch: BatchData) => {
-    const juniperMl = parseInt(juniperInput, 10);
+    // Start the editor with the batch's own Juniper amount.
+    // The user can adjust Juniper directly in the editor, which rescales
+    // the rest of the recipe live.
+    const juniperItem = batch.items.find((i) => i.botanicalId === 1);
+    const juniperMl = juniperItem?.amount || 500;
     setSelectedBatch(batch);
     setEditorItems(buildEditorItems(batch, juniperMl));
     juniperBaseRef.current = juniperMl;
     setSaved(false);
-    setStep(3);
+    setStep(2);
   };
 
   const handleItemChange = (idx: number, value: string) => {
@@ -602,7 +532,6 @@ function BuilderInner() {
         }
       }
       juniperBaseRef.current = snapped;
-      setJuniperInput(String(snapped));
     }
 
     setEditorItems(next);
@@ -666,24 +595,20 @@ function BuilderInner() {
     }
   };
 
-  // Handle ?from=batchId — auto-select a batch from the log
-  const fromBatchId = searchParams.get('from');
+  // Handle ?from=batchId — populate the editor from the named batch/draft.
+  // The initial step is already 2 (editor) thanks to the synchronous check
+  // above; this effect just fills in editorItems once the data has loaded.
   useEffect(() => {
-    if (fromBatchId && batches.length > 0 && botanicals.length > 0 && step === 1) {
-      const batch = batches.find((b) => b.id === parseInt(fromBatchId, 10));
-      if (batch) {
-        setSelectedBatch(batch);
-        // Pre-fill juniper amount from the batch
-        const juniperItem = batch.items.find((i) => i.botanicalId === 1);
-        const juniperMl = juniperItem?.amount || 500;
-        setJuniperInput(String(juniperMl));
-        setEditorItems(buildEditorItems(batch, juniperMl));
-        juniperBaseRef.current = juniperMl;
-        setSaved(false);
-        setStep(3);
-      }
-    }
-  }, [fromBatchId, batches, botanicals, step, buildEditorItems]);
+    if (!fromBatchId || selectedBatch || batches.length === 0 || botanicals.length === 0) return;
+    const batch = batches.find((b) => b.id === parseInt(fromBatchId, 10));
+    if (!batch) return;
+    const juniperItem = batch.items.find((i) => i.botanicalId === 1);
+    const juniperMl = juniperItem?.amount || 500;
+    setSelectedBatch(batch);
+    setEditorItems(buildEditorItems(batch, juniperMl));
+    juniperBaseRef.current = juniperMl;
+    setSaved(false);
+  }, [fromBatchId, batches, botanicals, selectedBatch, buildEditorItems]);
 
   // If mode=wizard, show the wizard chat — it stands alone now.
   // The wizard only suggests ratios; nothing needs a Juniper amount here.
@@ -708,69 +633,24 @@ function BuilderInner() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Progress indicator — 3 numbered circles with connector lines.
-          Colours transition smoothly when the step advances. */}
-      <div className="flex items-center gap-2 mb-8" aria-label="Builder progress">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-              aria-current={step === s ? 'step' : undefined}
-              style={{
-                background:
-                  step >= s ? 'var(--accent)' : 'var(--highlight-bg)',
-                color: step >= s ? 'var(--bg-secondary)' : 'var(--text-muted)',
-                border:
-                  step >= s
-                    ? '1px solid var(--accent)'
-                    : '1px solid var(--border)',
-                transition:
-                  'background-color 200ms var(--ease-out), border-color 200ms var(--ease-out), color 200ms var(--ease-out)',
-              }}
-            >
-              {s}
-            </div>
-            {s < 3 && (
-              <div
-                className="w-8 h-0.5"
-                style={{
-                  background: step > s ? 'var(--accent)' : 'var(--border)',
-                  transition: 'background-color 220ms var(--ease-out) 80ms',
-                }}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
       {step === 1 && (
-        <JuniperStep
-          juniperMl={juniperInput}
-          onJuniperChange={setJuniperInput}
-          onNext={() => setStep(2)}
-        />
-      )}
-
-      {step === 2 && (
         <StartingPointStep
           batches={batches}
           loading={batchesLoading}
           onSelectBatch={handleSelectBatch}
           onWizard={() => router.push('/builder?mode=wizard')}
-          onBack={() => setStep(1)}
         />
       )}
 
-      {step === 3 && selectedBatch && (
+      {step === 2 && selectedBatch && (
         <RecipeEditor
           items={editorItems}
-          juniperMl={parseInt(juniperInput, 10)}
           sourceBatchName={selectedBatch.name}
           onItemChange={handleItemChange}
           onItemBlur={handleItemBlur}
           onSave={handleSave}
           onAddBotanical={handleAddBotanical}
-          onBack={() => setStep(2)}
+          onBack={() => setStep(1)}
           saving={saving}
           saved={saved}
         />

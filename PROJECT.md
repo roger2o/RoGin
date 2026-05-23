@@ -21,9 +21,8 @@ RoGin replaces a manually maintained spreadsheet that has been used to track hom
 ## Features
 
 ### Recipe Builder
-- Enter how much Juniper infusion you have available and the app calculates all other ingredient amounts automatically.
-- Start a new recipe from a previous batch or an AI-generated draft (amounts scale to your current Juniper quantity), or open the AI Distiller wizard to generate a fresh draft.
-- Adjust any ingredient amount in real time while tasting during a mixing session. The Juniper amount is also editable -- changing it rescales all other botanicals proportionally.
+- Start a new recipe by picking a previous batch or an AI-generated draft from the Batch Log, or by opening the AI Distiller wizard to generate a fresh draft. There is no separate "enter your Juniper amount" screen -- the editor opens with the source recipe's Juniper amount already loaded.
+- Adjust any ingredient amount in real time while tasting during a mixing session. The Juniper amount is editable directly in the editor -- changing it rescales all other botanicals proportionally and live.
 - Ingredients are sorted by amount (largest first, with Juniper always at the top) so the most significant botanicals are immediately visible.
 - All amounts are shown in millilitres, rounded to the nearest 5 ml for practical measuring.
 - Add new botanicals on the fly -- either manually through the recipe editor or when the AI suggests something you have not used before. New botanicals are saved to the database for future use.
@@ -144,6 +143,8 @@ The AI wizard now uses Anthropic prompt caching. The static portion of the syste
 In May 2026 the builder underwent a UI improvement pass driven by an evaluation of two design skills (`/emil-design-eng` and `/impeccable`) — both retired afterwards with their substantive findings promoted into the shared `/ui-consistency` skill. The pass landed on RoGin: tinted-warm neutrals (no pure white/black), focus-visible rings on every interactive element, `:active` press-feedback scale, hover effects gated for touch devices, a `prefers-reduced-motion` block, a semantic `<table>` for the AI-generated recipe rows, `aria-live` on the chat region, skeleton placeholders in place of "Loading…" text, and a fix to the wizard route's previously-redundant re-asking for the Juniper amount. Pure CSS and semantic HTML — no new dependencies.
 
 Later in May 2026 the wizard and Batch Log workflow were tightened. The AI Distiller no longer asks for a Juniper amount at all — it works purely in ratios, since absolute millilitres only matter at mixing time. Its only exit is now a "Save as draft" action that writes the suggestion into the Batch Log as a draft entry (a Batch row with a new `isDraft` flag), pre-filled with the AI's recipe description as its notes. The log distinguishes drafts with a pill, shows the AI description instead of tasting notes, hides the misleading "Total Volume" line (draft amounts use a 500 ml Juniper placeholder), and switches the action button to "Use this Draft" which loads the draft into the Recipe Builder for rescaling and saving as a real batch. Either a batch or a draft can be deleted from the log with an inline confirmation. A small `/api/drafts` endpoint accepts the wizard's ratio-based shape directly and auto-creates any unknown botanicals before saving. The schema gained `Batch.isDraft Boolean @default(false)`; the column was applied to Turso via a single `ALTER TABLE` (the production database is shared with TDAI but the two apps' tables never overlap).
+
+Immediately after, the Recipe Builder's old "How much Juniper?" entry screen was removed. The Juniper amount has been editable directly inside the recipe editor (with live rescaling) since an earlier commit, so the upfront screen was redundant and was also causing a brief flash on screens that loaded a batch or draft from the log via `?from=`. The builder is now a clean two-step flow: pick a starting point, then edit and save. When a batch or draft is loaded, the editor opens with that source recipe's own Juniper amount as the starting value, which the user can adjust live.
 
 ---
 

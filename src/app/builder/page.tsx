@@ -195,7 +195,6 @@ function RecipeEditor({
   onBack,
   saving,
   saved,
-  initialNotes = '',
 }: {
   items: EditorItem[];
   juniperMl: number;
@@ -207,13 +206,12 @@ function RecipeEditor({
   onBack: () => void;
   saving: boolean;
   saved: boolean;
-  initialNotes?: string;
 }) {
   const [batchName, setBatchName] = useState('');
   const [batchDate, setBatchDate] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [batchNotes, setBatchNotes] = useState(initialNotes);
+  const [batchNotes, setBatchNotes] = useState('');
   const [newBotName, setNewBotName] = useState('');
   const [newBotNameHe, setNewBotNameHe] = useState('');
   const [addingBot, setAddingBot] = useState(false);
@@ -497,8 +495,6 @@ function BuilderInner() {
   const [editorItems, setEditorItems] = useState<EditorItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [wizardJuniperConfirmed, setWizardJuniperConfirmed] = useState(false);
-  const [wizardNotes, setWizardNotes] = useState('');
   const juniperBaseRef = useRef(0);
 
   // Fetch batches and botanicals on mount
@@ -565,7 +561,6 @@ function BuilderInner() {
     setSelectedBatch(batch);
     setEditorItems(buildEditorItems(batch, juniperMl));
     juniperBaseRef.current = juniperMl;
-    setWizardNotes('');
     setSaved(false);
     setStep(3);
   };
@@ -690,98 +685,11 @@ function BuilderInner() {
     }
   }, [fromBatchId, batches, botanicals, step, buildEditorItems]);
 
-  // Handle wizard generating a recipe
-  const handleWizardRecipe = useCallback(
-    async (items: { botanicalName: string; botanicalNameHe: string; ratio: number }[], description: string) => {
-      const juniperMl = parseInt(juniperInput, 10) || 500;
-      // Build editor items from wizard output
-      const wizardEditorItems: EditorItem[] = botanicals.map((bot) => {
-        if (bot.id === 1) {
-          return {
-            botanicalId: bot.id,
-            name: bot.name,
-            nameHe: bot.nameHe,
-            amount: juniperMl,
-            inputValue: String(juniperMl),
-          };
-        }
-        const wizardItem = items.find(
-          (i) => i.botanicalName.toLowerCase() === bot.name.toLowerCase()
-        );
-        const amount = wizardItem ? roundTo5(wizardItem.ratio * juniperMl) : 0;
-        return {
-          botanicalId: bot.id,
-          name: bot.name,
-          nameHe: bot.nameHe,
-          amount,
-          inputValue: String(amount),
-        };
-      });
-
-      // Add any new botanicals the wizard suggested that aren't in our library
-      for (const item of items) {
-        const exists = botanicals.some(
-          (b) => b.name.toLowerCase() === item.botanicalName.toLowerCase()
-        );
-        if (!exists && item.ratio > 0) {
-          try {
-            const res = await fetch('/api/botanicals', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: item.botanicalName, nameHe: item.botanicalNameHe }),
-            });
-            if (res.ok) {
-              const newBot = await res.json();
-              wizardEditorItems.push({
-                botanicalId: newBot.id,
-                name: newBot.name,
-                nameHe: newBot.nameHe,
-                amount: roundTo5(item.ratio * juniperMl),
-                inputValue: String(roundTo5(item.ratio * juniperMl)),
-              });
-              setBotanicals(prev => [...prev, newBot]);
-            }
-          } catch {
-            // Skip botanical if creation fails
-          }
-        }
-      }
-
-      setSelectedBatch({ id: 0, name: 'AI Distiller Recipe', date: '', totalVolume: 0, notes: '', recipeId: null, recipeName: null, items: [] });
-      setEditorItems(sortByAmount(wizardEditorItems));
-      juniperBaseRef.current = juniperMl;
-      setWizardNotes(description || '');
-      setSaved(false);
-      setStep(3);
-    },
-    [juniperInput, botanicals]
-  );
-
-  // If mode=wizard, show the wizard chat
+  // If mode=wizard, show the wizard chat — it stands alone now.
+  // The wizard only suggests ratios; nothing needs a Juniper amount here.
+  // The user saves the AI suggestion as a draft, then loads it from the
+  // Batch Log when they're ready to mix, at which point they enter Juniper.
   if (mode === 'wizard') {
-    const juniperMl = parseInt(juniperInput, 10);
-    const hasValidJuniper = !isNaN(juniperMl) && juniperMl > 0;
-    // If Juniper amount not yet entered, show the input step.
-    // If it was already entered in step 1, inherit it and skip this screen.
-    if (!hasValidJuniper && !wizardJuniperConfirmed) {
-      return (
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <button
-            onClick={() => router.push('/builder')}
-            className="mb-4 text-sm font-medium flex items-center gap-1"
-            style={{ color: 'var(--accent)' }}
-          >
-            &larr; Back to Builder
-          </button>
-          <JuniperStep
-            juniperMl={juniperInput}
-            onJuniperChange={setJuniperInput}
-            onNext={() => setWizardJuniperConfirmed(true)}
-          />
-        </div>
-      );
-    }
-
     return (
       <div className="max-w-2xl mx-auto px-4 py-8" style={{ height: 'calc(100vh - 56px)' }}>
         <button
@@ -792,10 +700,7 @@ function BuilderInner() {
           &larr; Back to Builder
         </button>
         <div style={{ height: 'calc(100% - 40px)', display: 'flex', flexDirection: 'column' }}>
-          <WizardChat
-            juniperAmount={juniperMl}
-            onRecipeGenerated={handleWizardRecipe}
-          />
+          <WizardChat />
         </div>
       </div>
     );
@@ -868,7 +773,6 @@ function BuilderInner() {
           onBack={() => setStep(2)}
           saving={saving}
           saved={saved}
-          initialNotes={wizardNotes}
         />
       )}
     </div>

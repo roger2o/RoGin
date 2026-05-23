@@ -27,6 +27,8 @@ export default function BatchLogPage() {
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchBatches() {
@@ -47,6 +49,7 @@ export default function BatchLogPage() {
   function toggleExpand(id: number) {
     setExpandedId((prev) => (prev === id ? null : id));
     setEditingNotesId(null);
+    setConfirmingDeleteId(null);
   }
 
   function startEditingNotes(batch: BatchData) {
@@ -71,6 +74,21 @@ export default function BatchLogPage() {
       alert('Failed to save notes. Please try again.');
     } finally {
       setSavingNotes(false);
+    }
+  }
+
+  async function deleteBatch(batchId: number) {
+    setDeletingId(batchId);
+    try {
+      const res = await fetch(`/api/batches/${batchId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      setBatches((prev) => prev.filter((b) => b.id !== batchId));
+      if (expandedId === batchId) setExpandedId(null);
+      setConfirmingDeleteId(null);
+    } catch {
+      alert('Failed to delete. Please try again.');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -146,6 +164,12 @@ export default function BatchLogPage() {
         <div className="flex flex-col gap-4">
           {batches.map((batch) => {
             const isExpanded = expandedId === batch.id;
+            const isDraft = batch.isDraft;
+            const notesHeading = isDraft ? 'Recipe Description' : 'Tasting Notes';
+            const notesPlaceholder = isDraft
+              ? 'No description'
+              : 'No notes';
+            const actionLabel = isDraft ? 'Use this Draft' : 'Use as Starting Point';
 
             return (
               <div key={batch.id} className="card overflow-hidden">
@@ -164,6 +188,19 @@ export default function BatchLogPage() {
                         >
                           {batch.name || 'Untitled Batch'}
                         </h2>
+                        {isDraft && (
+                          <span
+                            className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                            style={{
+                              background: 'var(--highlight-bg)',
+                              color: 'var(--accent)',
+                              border: '1px solid var(--accent-muted)',
+                              letterSpacing: '0.08em',
+                            }}
+                          >
+                            Draft
+                          </span>
+                        )}
                         <span
                           className="text-sm"
                           style={{ color: 'var(--text-muted)' }}
@@ -173,18 +210,28 @@ export default function BatchLogPage() {
                       </div>
 
                       <div className="flex items-center gap-4 mt-1">
-                        <span
-                          className="text-sm font-medium"
-                          style={{ color: 'var(--text-secondary)' }}
-                        >
-                          {Math.round(batch.totalVolume)} ml total
-                        </span>
+                        {!isDraft && (
+                          <span
+                            className="text-sm font-medium"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            {Math.round(batch.totalVolume)} ml total
+                          </span>
+                        )}
                         {batch.recipeName && (
                           <span
                             className="text-sm"
                             style={{ color: 'var(--text-muted)' }}
                           >
                             from {batch.recipeName}
+                          </span>
+                        )}
+                        {isDraft && (
+                          <span
+                            className="text-sm"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
+                            {batch.items.length} botanicals
                           </span>
                         )}
                       </div>
@@ -200,7 +247,7 @@ export default function BatchLogPage() {
                         >
                           {batch.notes
                             ? truncate(batch.notes, 120)
-                            : 'No notes'}
+                            : notesPlaceholder}
                         </p>
                       )}
                     </div>
@@ -236,14 +283,14 @@ export default function BatchLogPage() {
                     className="px-5 pb-5 border-t"
                     style={{ borderColor: 'var(--border-light)' }}
                   >
-                    {/* Tasting notes */}
+                    {/* Notes / description */}
                     <div className="mt-4 mb-5">
                       <div className="flex items-center justify-between mb-2">
                         <h3
                           className="text-sm font-bold uppercase tracking-wider"
                           style={{ color: 'var(--text-muted)' }}
                         >
-                          Tasting Notes
+                          {notesHeading}
                         </h3>
                         {editingNotesId !== batch.id && (
                           <button
@@ -300,7 +347,7 @@ export default function BatchLogPage() {
                               : 'var(--text-muted)',
                           }}
                         >
-                          {batch.notes || 'No notes'}
+                          {batch.notes || notesPlaceholder}
                         </p>
                       )}
                     </div>
@@ -347,38 +394,108 @@ export default function BatchLogPage() {
                       </div>
                     </div>
 
-                    {/* Total volume summary */}
-                    <div
-                      className="flex items-center justify-between py-2 px-3 rounded-lg mb-5"
-                      style={{
-                        background: 'var(--highlight-bg)',
-                        borderTop: '2px solid var(--border)',
-                      }}
-                    >
-                      <span
-                        className="font-bold text-sm"
-                        style={{ color: 'var(--text-primary)' }}
+                    {/* Total volume — only meaningful for real batches.
+                        Drafts use a placeholder Juniper amount, so showing
+                        a total here would mislead. */}
+                    {!isDraft && (
+                      <div
+                        className="flex items-center justify-between py-2 px-3 rounded-lg mb-5"
+                        style={{
+                          background: 'var(--highlight-bg)',
+                          borderTop: '2px solid var(--border)',
+                        }}
                       >
-                        Total Volume
-                      </span>
-                      <span
-                        className="font-mono text-sm font-bold"
-                        style={{ color: 'var(--accent)' }}
-                      >
-                        {Math.round(batch.totalVolume)} ml
-                      </span>
-                    </div>
+                        <span
+                          className="font-bold text-sm"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Total Volume
+                        </span>
+                        <span
+                          className="font-mono text-sm font-bold"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          {Math.round(batch.totalVolume)} ml
+                        </span>
+                      </div>
+                    )}
 
-                    {/* Action button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/builder?from=${batch.id}`);
-                      }}
-                      className="btn-primary w-full text-sm"
-                    >
-                      Use as Starting Point
-                    </button>
+                    {isDraft && (
+                      <p
+                        className="text-xs italic mb-5"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Amounts above use a 500 ml Juniper placeholder. When you
+                        use this draft, enter your real Juniper amount and the
+                        ratios will rescale automatically.
+                      </p>
+                    )}
+
+                    {/* Actions: Use + Delete */}
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/builder?from=${batch.id}`);
+                        }}
+                        className="btn-primary w-full text-sm"
+                      >
+                        {actionLabel}
+                      </button>
+
+                      {confirmingDeleteId === batch.id ? (
+                        <div
+                          role="alertdialog"
+                          aria-label={`Confirm delete ${batch.name || 'batch'}`}
+                          className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg"
+                          style={{
+                            background: 'rgba(140, 29, 44, 0.06)',
+                            border: '1px solid var(--accent-muted)',
+                          }}
+                        >
+                          <span
+                            className="text-sm"
+                            style={{ color: 'var(--accent)' }}
+                          >
+                            Delete this {isDraft ? 'draft' : 'batch'}? This can&apos;t be undone.
+                          </span>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteBatch(batch.id);
+                              }}
+                              className="btn-primary text-xs py-2 px-3"
+                              disabled={deletingId === batch.id}
+                              style={{ whiteSpace: 'nowrap' }}
+                            >
+                              {deletingId === batch.id ? 'Deleting…' : 'Yes, delete'}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmingDeleteId(null);
+                              }}
+                              className="btn-secondary text-xs py-2 px-3"
+                              disabled={deletingId === batch.id}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmingDeleteId(batch.id);
+                          }}
+                          className="btn-secondary w-full text-sm"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          Delete {isDraft ? 'Draft' : 'Batch'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

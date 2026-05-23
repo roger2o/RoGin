@@ -149,9 +149,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { messages, juniperAmount } = body as {
+    const { messages } = body as {
       messages: WizardMessage[];
-      juniperAmount: number;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -165,18 +164,10 @@ export async function POST(request: NextRequest) {
     const batchHistory = await fetchBatchHistory();
     const systemPrompt = buildSystemPrompt(batchHistory);
 
-    // Build messages for Claude — include Juniper context in the first user message
+    // The wizard only suggests ratios. Absolute ml amounts are decided later
+    // in the recipe editor when the user knows how much Juniper they have.
     const claudeMessages: { role: 'user' | 'assistant'; content: string }[] = messages.map(
-      (msg, index) => {
-        if (index === 0 && msg.role === 'user') {
-          // Append Juniper amount context to the first user message
-          const juniperContext = juniperAmount
-            ? `\n\n[System note: The user has set their Juniper + Lemon base amount to ${juniperAmount} ml for this batch.]`
-            : '';
-          return { role: msg.role, content: msg.content + juniperContext };
-        }
-        return { role: msg.role, content: msg.content };
-      }
+      (msg) => ({ role: msg.role, content: msg.content })
     );
 
     const client = new Anthropic();

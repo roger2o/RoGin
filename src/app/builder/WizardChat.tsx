@@ -1,15 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, FormEvent } from 'react';
+import Link from 'next/link';
 import { WizardMessage, GeneratedRecipe } from '@/lib/types';
-
-interface WizardChatProps {
-  juniperAmount: number;
-  onRecipeGenerated: (
-    items: { botanicalName: string; botanicalNameHe: string; ratio: number }[],
-    description: string
-  ) => void;
-}
 
 /**
  * Try to extract a JSON recipe block from the assistant's message.
@@ -27,7 +20,6 @@ function extractRecipe(text: string): GeneratedRecipe | null {
       Array.isArray(parsed.recipe.items) &&
       parsed.recipe.items.length > 0
     ) {
-      // Validate each item has the required fields
       const valid = parsed.recipe.items.every(
         (item: Record<string, unknown>) =>
           typeof item.botanicalName === 'string' &&
@@ -65,7 +57,6 @@ function renderMessageText(text: string): React.ReactNode[] {
       elements.push(<br key={`br-${lineIdx}`} />);
     }
 
-    // Process bold and italic within the line
     const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
     parts.forEach((part, partIdx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -85,66 +76,65 @@ function renderMessageText(text: string): React.ReactNode[] {
   return elements;
 }
 
-export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps) {
+export function WizardChat() {
   const [messages, setMessages] = useState<WizardMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractedRecipe, setExtractedRecipe] = useState<GeneratedRecipe | null>(null);
-  const [recipeUsed, setRecipeUsed] = useState(false);
+
+  // Save-as-draft state
+  const [draftName, setDraftName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedDraftId, setSavedDraftId] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasFetchedInitial = useRef(false);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Send messages to the API
-  const sendMessages = useCallback(
-    async (allMessages: WizardMessage[]) => {
-      setIsLoading(true);
-      setError(null);
+  const sendMessages = useCallback(async (allMessages: WizardMessage[]) => {
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const res = await fetch('/api/wizard', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: allMessages, juniperAmount }),
-        });
+    try {
+      const res = await fetch('/api/wizard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: allMessages }),
+      });
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(
-            data.error || `Request failed with status ${res.status}`
-          );
-        }
-
-        const data = await res.json();
-        const assistantMessage: WizardMessage = {
-          role: 'assistant',
-          content: data.message,
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-
-        // Check if the response contains a recipe
-        const recipe = extractRecipe(data.message);
-        if (recipe) {
-          setExtractedRecipe(recipe);
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Something went wrong';
-        setError(message);
-      } finally {
-        setIsLoading(false);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data.error || `Request failed with status ${res.status}`
+        );
       }
-    },
-    [juniperAmount]
-  );
+
+      const data = await res.json();
+      const assistantMessage: WizardMessage = {
+        role: 'assistant',
+        content: data.message,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      const recipe = extractRecipe(data.message);
+      if (recipe) {
+        setExtractedRecipe(recipe);
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Something went wrong';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Auto-send the opening message when the component mounts
   useEffect(() => {
@@ -153,14 +143,12 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
 
     const openingMessage: WizardMessage = {
       role: 'user',
-      content:
-        "Hi! I'd like help creating a new gin recipe.",
+      content: "Hi! I'd like help creating a new gin recipe.",
     };
     setMessages([openingMessage]);
     sendMessages([openingMessage]);
   }, [sendMessages]);
 
-  // Handle form submission
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
@@ -173,7 +161,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
     sendMessages(updatedMessages);
   };
 
-  // Handle Enter key (submit on Enter, newline on Shift+Enter)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -181,11 +168,39 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
     }
   };
 
-  // Handle "Use This Recipe" button
-  const handleUseRecipe = () => {
+  const handleSaveDraft = async () => {
     if (!extractedRecipe) return;
-    setRecipeUsed(true);
-    onRecipeGenerated(extractedRecipe.items, extractedRecipe.description);
+    const trimmedName = draftName.trim();
+    if (!trimmedName) {
+      setSaveError('Give your draft a name first.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: trimmedName,
+          description: extractedRecipe.description,
+          items: extractedRecipe.items,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save draft');
+      }
+
+      const saved = await res.json();
+      setSavedDraftId(saved.id);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save draft');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -198,8 +213,7 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         background: 'var(--bg-primary)',
       }}
     >
-      {/* Header — single line, no redundant subtitle.
-          Saves vertical space; the page already establishes context. */}
+      {/* Header */}
       <div
         style={{
           padding: '10px 16px',
@@ -228,9 +242,7 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         </h3>
       </div>
 
-      {/* Messages area.
-          aria-live="polite" so screen readers announce assistant responses
-          as they arrive. */}
+      {/* Messages area */}
       <div
         role="log"
         aria-live="polite"
@@ -247,7 +259,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
       >
         {messages.map((msg, idx) => {
           const isUser = msg.role === 'user';
-          // Don't render the auto-sent opening message
           if (idx === 0 && isUser) return null;
 
           const isAssistant = msg.role === 'assistant';
@@ -267,7 +278,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
                 gap: '8px',
               }}
             >
-              {/* Chat bubble */}
               {displayText && (
                 <div
                   style={{
@@ -288,9 +298,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
                 </div>
               )}
 
-              {/* Recipe — rendered ADJACENT to the bubble, not nested inside.
-                  Avoids the nested-card pattern. Semantic <table> so screen
-                  readers announce rows as "Juniper, 1.0". */}
               {recipe && (
                 <section
                   aria-labelledby={`recipe-${idx}-heading`}
@@ -399,7 +406,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
           );
         })}
 
-        {/* Loading indicator */}
         {isLoading && (
           <div
             className="animate-fade-in-up"
@@ -421,7 +427,6 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
           </div>
         )}
 
-        {/* Error message */}
         {error && (
           <div
             role="alert"
@@ -459,33 +464,67 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
         <div ref={messagesEndRef} />
       </div>
 
-      {/* "Use This Recipe" CTA — state-marking entrance (a state change, not decoration). */}
-      {extractedRecipe && !recipeUsed && (
+      {/* Save-as-draft area — appears once the AI has produced a recipe */}
+      {extractedRecipe && !savedDraftId && (
         <div
-          key="use-recipe-cta"
+          key="save-draft"
           className="animate-fade-in-up"
           style={{
             padding: '12px 16px',
             borderTop: '1px solid var(--border)',
             background: 'var(--bg-secondary)',
             display: 'flex',
-            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: '8px',
             flexShrink: 0,
           }}
         >
-          <button
-            className="btn-primary"
-            onClick={handleUseRecipe}
-            style={{ width: '100%', maxWidth: '400px' }}
+          <label
+            htmlFor="draft-name"
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+            }}
           >
-            Use this recipe
-          </button>
+            Save this recipe as a draft for later
+          </label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              id="draft-name"
+              type="text"
+              className="input"
+              placeholder="Name this draft (e.g. Citrus Forward #1)"
+              value={draftName}
+              onChange={(e) => {
+                setDraftName(e.target.value);
+                if (saveError) setSaveError(null);
+              }}
+              disabled={saving}
+              style={{ flex: 1 }}
+              maxLength={120}
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleSaveDraft}
+              disabled={saving || !draftName.trim()}
+              style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}
+            >
+              {saving ? 'Saving…' : 'Save as draft'}
+            </button>
+          </div>
+          {saveError && (
+            <p role="alert" style={{ margin: 0, fontSize: '12px', color: 'var(--accent)' }}>
+              {saveError}
+            </p>
+          )}
         </div>
       )}
 
-      {recipeUsed && (
+      {savedDraftId && (
         <div
-          key="recipe-loaded-confirmation"
+          key="draft-saved"
           className="animate-fade-in-up"
           role="status"
           style={{
@@ -493,14 +532,22 @@ export function WizardChat({ juniperAmount, onRecipeGenerated }: WizardChatProps
             borderTop: '1px solid var(--border)',
             background: 'var(--bg-secondary)',
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
+            gap: '10px',
             flexShrink: 0,
             fontSize: '14px',
             color: 'var(--accent)',
             fontWeight: 600,
           }}
         >
-          Recipe loaded into the editor
+          <span>Draft saved.</span>
+          <Link
+            href="/log"
+            style={{ textDecoration: 'underline', fontWeight: 600 }}
+          >
+            View in Batch Log
+          </Link>
         </div>
       )}
 

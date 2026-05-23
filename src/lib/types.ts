@@ -36,6 +36,7 @@ export interface BatchData {
   notes: string;
   recipeId: number | null;
   recipeName: string | null;
+  isDraft: boolean;
   items: BatchItemData[];
 }
 

@@ -22,6 +22,7 @@ export async function GET() {
       notes: b.notes,
       recipeId: b.recipe?.id ?? null,
       recipeName: b.recipe?.name ?? null,
+      isDraft: b.isDraft,
       items: b.items.map((item) => ({
         botanicalId: item.botanicalId,
         botanicalName: item.botanical.name,
@@ -43,11 +44,12 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, date, notes, items } = body as {
+    const { name, date, notes, items, isDraft } = body as {
       name: string;
       date: string;
       notes: string;
       items: { botanicalId: number; amount: number }[];
+      isDraft?: boolean;
     };
 
     if (!items || items.length === 0) {
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
         date: new Date(date),
         notes: notes || '',
         totalVolume,
+        isDraft: isDraft === true,
         items: {
           create: items
             .filter((item: { amount: number }) => item.amount > 0)
@@ -90,6 +93,7 @@ export async function POST(request: NextRequest) {
       notes: batch.notes,
       recipeId: null,
       recipeName: null,
+      isDraft: batch.isDraft,
       items: batch.items.map((item) => ({
         botanicalId: item.botanicalId,
         botanicalName: item.botanical.name,

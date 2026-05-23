@@ -52,6 +52,7 @@ model Batch {
   recipeId    Int?
   userId      String   @default("default")
   createdAt   DateTime @default(now())
+  isDraft     Boolean  @default(false)
 
   recipe Recipe? @relation(fields: [recipeId], references: [id])
   items  BatchItem[]

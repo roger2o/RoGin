@@ -36,6 +36,7 @@ export async function GET(
       notes: batch.notes,
       recipeId: batch.recipe?.id ?? null,
       recipeName: batch.recipe?.name ?? null,
+      isDraft: batch.isDraft,
       items: batch.items.map((item) => ({
         botanicalId: item.botanicalId,
         botanicalName: item.botanical.name,
@@ -85,6 +86,38 @@ export async function PATCH(
     console.error('Failed to update batch:', error);
     return NextResponse.json(
       { error: 'Failed to update batch' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const batchId = parseInt(id, 10);
+
+    if (isNaN(batchId)) {
+      return NextResponse.json({ error: 'Invalid batch ID' }, { status: 400 });
+    }
+
+    await prisma.batch.delete({ where: { id: batchId } });
+
+    return NextResponse.json({ id: batchId }, { status: 200 });
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: string }).code === 'P2025'
+    ) {
+      return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+    }
+    console.error('Failed to delete batch:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete batch' },
       { status: 500 }
     );
   }

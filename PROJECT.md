@@ -22,7 +22,7 @@ RoGin replaces a manually maintained spreadsheet that has been used to track hom
 
 ### Recipe Builder
 - Enter how much Juniper infusion you have available and the app calculates all other ingredient amounts automatically.
-- Start a new recipe from a previous batch (amounts scale to your current Juniper quantity) or use the AI Distiller wizard.
+- Start a new recipe from a previous batch or an AI-generated draft (amounts scale to your current Juniper quantity), or open the AI Distiller wizard to generate a fresh draft.
 - Adjust any ingredient amount in real time while tasting during a mixing session. The Juniper amount is also editable -- changing it rescales all other botanicals proportionally.
 - Ingredients are sorted by amount (largest first, with Juniper always at the top) so the most significant botanicals are immediately visible.
 - All amounts are shown in millilitres, rounded to the nearest 5 ml for practical measuring.
@@ -31,17 +31,20 @@ RoGin replaces a manually maintained spreadsheet that has been used to track hom
 
 ### AI Recipe Wizard ("RoGin AI Distiller")
 - A conversational assistant powered by the Claude AI that acts as an experienced gin distiller.
+- Opens straight into the chat -- the wizard no longer asks for a Juniper amount, because it works in ratios rather than millilitres. The user only commits to a real Juniper quantity later, when they actually mix the recipe.
 - Asks thoughtful, open-ended questions about your flavour preferences, the occasion, and what you liked or disliked in past batches -- not a rigid checklist.
 - Reviews your entire batch history and tasting notes before making suggestions, so it avoids repeating past mistakes and builds on successes.
-- Generates a concrete starting recipe with ingredient amounts based on your available Juniper quantity.
-- Tasting notes suggested by the AI are automatically carried into the save flow, pre-filling the tasting notes field so nothing is lost.
+- Generates a concrete recipe as a set of botanical ratios with a short description of the recipe's character.
+- The AI's suggestion is saved as a **draft** in the Batch Log via a single "Save as draft" action. There is no longer a separate "Use this recipe" handoff -- the wizard's job ends at saving the draft. When ready to mix, the user opens the draft from the log and the Recipe Builder rescales it to their real Juniper amount.
 - Can recommend new botanicals the user has not tried, including Hebrew names so they can be found at Israeli spice markets. Any new botanicals the AI suggests are saved to the database so they are available in future recipes.
 
 ### Batch Log
 - A chronological record of every gin-making session: date, recipe name, ingredient amounts, total volume, and free-text tasting notes.
 - Pre-loaded with ten historical batches (July 2022 through September 2025) and two named recipes from the original spreadsheet.
-- Tap any batch to see full details; select any batch as a starting point for a new recipe.
-- Tasting notes can be edited after the fact.
+- Holds both **real batches** (gin you have actually mixed) and **drafts** (AI suggestions you have saved for later but not yet mixed). Drafts are visually marked with a "Draft" pill and show the AI's description instead of tasting notes. They omit a total volume because their amounts are stored against a placeholder Juniper quantity that gets rescaled when the user loads the draft into the builder.
+- Tap any entry to see full details; select any batch or draft as a starting point for a new recipe.
+- Tasting notes can be edited after the fact (for drafts, the field shows the AI's recipe description and is editable in the same way).
+- Either a batch or a draft can be deleted from the log with an inline confirmation step.
 
 ### Beginner Guide
 - A standalone reference page with a step-by-step method for making simple single-jar gin using vodka and botanicals.
@@ -139,6 +142,8 @@ The project has nine commits, progressing from initial scaffolding through featu
 The AI wizard now uses Anthropic prompt caching. The static portion of the system prompt (the distiller persona, botanical library, recipe format rules, and past-batch observations) is cached between requests; only the dynamic batch history is re-processed on each call. On a first call the cache is written (1,314 tokens, ~1.25× cost) and subsequent calls within the 5-minute TTL read those tokens from cache at roughly 10% of full cost, translating to ~57% cheaper per cached call and ~1-2 seconds faster time-to-first-token. Usage figures are logged server-side on every wizard call so cache hit rates remain observable.
 
 In May 2026 the builder underwent a UI improvement pass driven by an evaluation of two design skills (`/emil-design-eng` and `/impeccable`) — both retired afterwards with their substantive findings promoted into the shared `/ui-consistency` skill. The pass landed on RoGin: tinted-warm neutrals (no pure white/black), focus-visible rings on every interactive element, `:active` press-feedback scale, hover effects gated for touch devices, a `prefers-reduced-motion` block, a semantic `<table>` for the AI-generated recipe rows, `aria-live` on the chat region, skeleton placeholders in place of "Loading…" text, and a fix to the wizard route's previously-redundant re-asking for the Juniper amount. Pure CSS and semantic HTML — no new dependencies.
+
+Later in May 2026 the wizard and Batch Log workflow were tightened. The AI Distiller no longer asks for a Juniper amount at all — it works purely in ratios, since absolute millilitres only matter at mixing time. Its only exit is now a "Save as draft" action that writes the suggestion into the Batch Log as a draft entry (a Batch row with a new `isDraft` flag), pre-filled with the AI's recipe description as its notes. The log distinguishes drafts with a pill, shows the AI description instead of tasting notes, hides the misleading "Total Volume" line (draft amounts use a 500 ml Juniper placeholder), and switches the action button to "Use this Draft" which loads the draft into the Recipe Builder for rescaling and saving as a real batch. Either a batch or a draft can be deleted from the log with an inline confirmation. A small `/api/drafts` endpoint accepts the wizard's ratio-based shape directly and auto-creates any unknown botanicals before saving. The schema gained `Batch.isDraft Boolean @default(false)`; the column was applied to Turso via a single `ALTER TABLE` (the production database is shared with TDAI but the two apps' tables never overlap).
 
 ---
 

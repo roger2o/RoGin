@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Netlify deploy output — generated, minified build artifacts, not source.
+    ".netlify/**",
   ]),
 ]);
 

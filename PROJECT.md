@@ -147,6 +147,12 @@ Later in May 2026 the wizard and Batch Log workflow were tightened. The AI Disti
 
 Immediately after, the Recipe Builder's old "How much Juniper?" entry screen was removed. The Juniper amount has been editable directly inside the recipe editor (with live rescaling) since an earlier commit, so the upfront screen was redundant and was also causing a brief flash on screens that loaded a batch or draft from the log via `?from=`. The builder is now a clean two-step flow: pick a starting point, then edit and save. When a batch or draft is loaded, the editor opens with that source recipe's own Juniper amount as the starting value, which the user can adjust live.
 
+### June 2026 — AI Distiller model fix and lint cleanup
+
+- **AI Distiller restored.** The wizard had been calling a dated Claude model snapshot (`claude-sonnet-4-20250514`) that reached its retirement date on 15 June 2026 and began returning a `404 not_found_error`, breaking every suggestion request in production. The model was switched to the current alias `claude-sonnet-4-6` (the documented drop-in replacement). The request shape was already compatible — no prompt-caching, sampling-parameter, or prefill changes were needed. Verified end-to-end: the production wizard now returns healthy, history-aware responses. **Going forward, point the wizard at a current model alias (`claude-sonnet-4-6`) rather than a dated snapshot, so it doesn't break again on the next retirement date.**
+- **Lint config cleaned.** ESLint was scanning the generated `.netlify/` deploy-output tree (thousands of minified build artifacts), producing ~192 spurious errors that buried real warnings. Added `.netlify/**` to the `globalIgnores` list in `eslint.config.mjs`; `npm run lint` is now clean.
+- **Sibling project note.** TDAI — RoGin's sibling Next.js app that shares the Turso database — was checked for the same model-retirement risk and is **not affected**: it uses OpenAI (`gpt-4o-mini`), not Claude. Claude model-retirement sweeps only need to touch RoGin.
+
 ---
 
 ## Open Questions
